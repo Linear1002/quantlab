@@ -192,5 +192,100 @@ export const postSignals = (
     body,
   );
 
+// ---- バックテスト ----------------------------------------------------------
+
+export type SizingMode = "percent_equity" | "fixed_shares";
+export type PriceMode = "total_return" | "split_only";
+
+export type BacktestConfigIn = {
+  initial_capital: number;
+  commission_rate: number; // 比率(0.0005 = 0.05%)
+  commission_min: number;
+  slippage_bps: number;
+  sizing_mode: SizingMode;
+  sizing_value: number; // percent_equity なら 0〜1、fixed_shares なら株数
+  lot_size: number;
+  price_mode: PriceMode;
+};
+
+export type BacktestRequest = {
+  symbol: string;
+  start: string;
+  end: string;
+  interval: Interval;
+  strategy_id: string;
+  params: Record<string, number>;
+  config: BacktestConfigIn;
+  risk_free_rate: number;
+};
+
+export type Metrics = {
+  total_return: number;
+  cagr: number | null;
+  volatility: number | null;
+  sharpe: number | null;
+  sortino: number | null;
+  max_drawdown: number;
+  win_rate: number | null;
+  profit_factor: number | null;
+  profit_factor_infinite: boolean;
+  total_trades: number;
+  closed_trades: number;
+};
+
+export type SeriesPoint = {
+  date: string;
+  equity: number;
+  benchmark: number;
+  drawdown: number;
+  benchmark_drawdown: number;
+  position: number;
+  close: number;
+};
+
+export type Trade = {
+  entry_date: string;
+  exit_date: string;
+  entry_price: number;
+  exit_price: number;
+  qty: number;
+  entry_fee: number;
+  exit_fee: number;
+  pnl: number;
+  ret: number;
+  bars_held: number;
+  days_held: number;
+  status: "closed" | "open";
+};
+
+export type OrderNote = { date: string; reason: string; requested_qty: number; filled_qty: number };
+
+export type BacktestResult = {
+  symbol: string;
+  strategy_id: string;
+  params: Record<string, number>;
+  config: BacktestConfigIn & { long_only: boolean };
+  start: string;
+  end: string;
+  interval: Interval;
+  provider: string;
+  engine_version: string;
+  risk_free_rate: number;
+  metrics: Metrics;
+  benchmark_metrics: Metrics;
+  series: SeriesPoint[];
+  trades: Trade[];
+  monthly_returns: { period: string; ret: number }[];
+  yearly_returns: { period: string; ret: number }[];
+  skipped_orders: OrderNote[];
+  reduced_orders: OrderNote[];
+  pending_signal: "buy" | "sell" | null;
+  warmup_bars: number;
+  warnings: string[];
+};
+
+export const runBacktest = (body: BacktestRequest, signal?: AbortSignal) =>
+  request<BacktestResult>("/api/backtests", undefined, signal, body);
+
 /** 合成データ(テスト用)のデータ元か。画面に警告を出すために使う */
 export const isSyntheticProvider = (provider: string) => provider === "fixture";

@@ -64,7 +64,7 @@ class MarketDataProvider(ABC):
 | GET | /api/stocks/{symbol}/history?start=&end=&interval= | OHLCV | 3 |
 | GET | /api/strategies | 戦略一覧+パラメータ仕様 | 4 |
 | POST | /api/strategies/{id}/signals | 選択中の銘柄・期間での売買シグナル(損益計算なし) | 4 |
-| POST | /api/backtests | 実行(結果を保存してIDを返す) | 5 |
+| POST | /api/backtests | 実行して結果を返す(Buy and Hold の比較つき)。保存は Phase 7 | 5 |
 | GET | /api/backtests | 履歴一覧 | 7 |
 | GET | /api/backtests/{id} | 結果の再表示 | 7 |
 | DELETE | /api/backtests/{id} | 削除 | 7 |

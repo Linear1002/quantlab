@@ -1,13 +1,16 @@
 """バックテストの入力設定(仕様書 QUANT_SPEC.md §5.1)。
 
-Phase 1 では「設定値の型と範囲チェック」だけを実装する。
-計算ロジック(engine.py, metrics.py)は Phase 5 以降で実装する。
+入力の設定(BacktestConfig)と、結果のデータ型(Trade, OrderNote, BacktestResult)。
+計算は engine.py と metrics.py が行う。
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Literal
+
+import pandas as pd
 
 from quant.errors import InvalidParameterError
 
@@ -73,3 +76,47 @@ class BacktestConfig:
             errors.append("short selling is not supported yet (long_only must be True)")
         if errors:
             raise InvalidParameterError("; ".join(errors))
+
+
+# ---- バックテストの結果(QUANT_SPEC §5, §6)-----------------------------------------
+
+
+@dataclass(frozen=True)
+class Trade:
+    """1回の売買(買い → 売り)。期間の最後に保有中なら status="open"(含み損益)。"""
+
+    entry_date: pd.Timestamp
+    exit_date: pd.Timestamp
+    entry_price: float  # スリッページ込みの約定価格
+    exit_price: float  # 未決済なら最終日の終値
+    qty: int
+    entry_fee: float
+    exit_fee: float  # 未決済なら 0
+    pnl: float  # (exit_price*qty - exit_fee) - (entry_price*qty + entry_fee)
+    ret: float  # pnl / (entry_price*qty + entry_fee)
+    bars_held: int
+    days_held: int  # 暦日数
+    status: Literal["closed", "open"]
+
+
+@dataclass(frozen=True)
+class OrderNote:
+    """思いどおりに約定できなかった注文の記録。"""
+
+    date: pd.Timestamp
+    side: Literal["buy", "sell"]
+    reason: Literal["insufficient_cash", "reduced"]
+    requested_qty: int
+    filled_qty: int
+
+
+@dataclass
+class BacktestResult:
+    equity: pd.Series  # 資産推移 E_t
+    cash: pd.Series
+    position: pd.Series  # 保有株数 q_t
+    trades: list[Trade]
+    skipped_orders: list[OrderNote]  # 資金不足で買えなかった注文
+    reduced_orders: list[OrderNote]  # fixed_shares で株数を減らした注文
+    pending_signal: Literal["buy", "sell"] | None  # 最終日に出て、約定していないシグナル
+    config: BacktestConfig
