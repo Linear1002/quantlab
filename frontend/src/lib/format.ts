@@ -1,10 +1,13 @@
 // 数値・日付の表示形式をそろえるための関数
 
-/** 株価。円は小数1桁まで、ドルは2桁まで(必要なときだけ小数を出す) */
-export function formatPrice(value: number, currency: string | null): string {
+/**
+ * 株価・金額。円は小数1桁まで、ドルは2桁まで。
+ * fixed = true なら小数の桁を必ずそろえる(表の中で桁位置をそろえたいとき)
+ */
+export function formatPrice(value: number, currency: string | null, fixed = false): string {
   const digits = currency === "JPY" ? 1 : 2;
   const num = value.toLocaleString("ja-JP", {
-    minimumFractionDigits: currency === "JPY" ? 0 : 2,
+    minimumFractionDigits: fixed ? digits : currency === "JPY" ? 0 : 2,
     maximumFractionDigits: digits,
   });
   if (currency === "JPY") return `${num} 円`;

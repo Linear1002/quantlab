@@ -32,6 +32,8 @@ class BacktestRun:
     benchmark_drawdown: pd.Series
     monthly: pd.Series
     yearly: pd.Series
+    benchmark_monthly: pd.Series
+    benchmark_yearly: pd.Series
     warmup_bars: int
     warnings: list[str]
 
@@ -88,6 +90,8 @@ def run_strategy_backtest(
         benchmark_drawdown=drawdown(bench.equity),
         monthly=monthly_returns(result.equity),
         yearly=yearly_returns(result.equity),
+        benchmark_monthly=monthly_returns(bench.equity),
+        benchmark_yearly=yearly_returns(bench.equity),
         warmup_bars=sig.warmup_bars,
         warnings=warnings,
     )

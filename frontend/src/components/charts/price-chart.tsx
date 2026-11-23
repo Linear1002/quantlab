@@ -25,6 +25,8 @@ type Props = {
   currency?: string | null;
   /** 売買シグナルの印(買い=下に▲、売り=上に▼) */
   markers?: { date: string; type: "buy" | "sell" }[];
+  /** 出来高を表示するか(バックテスト結果の調整済み価格には出来高が無い) */
+  showVolume?: boolean;
   height?: number;
 };
 
@@ -32,7 +34,7 @@ type Props = {
  * ローソク足 + 出来高のチャート(TradingView Lightweight Charts)。
  * チャートの作成は1回だけ行い、データが変わったら setData で差し替える。
  */
-export function PriceChart({ bars, currency, markers, height = 420 }: Props) {
+export function PriceChart({ bars, currency, markers, showVolume = true, height = 420 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -69,13 +71,16 @@ export function PriceChart({ bars, currency, markers, height = 420 }: Props) {
       borderVisible: false,
     });
     // 出来高は下 20% に小さく表示する
-    const volume = chart.addSeries(HistogramSeries, {
-      priceFormat: { type: "volume" },
-      priceScaleId: "",
-      color: cssVar("--line-strong"),
-    });
-    volume.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
-    candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: 0.25 } });
+    let volume: ISeriesApi<"Histogram"> | null = null;
+    if (showVolume) {
+      volume = chart.addSeries(HistogramSeries, {
+        priceFormat: { type: "volume" },
+        priceScaleId: "",
+        color: cssVar("--line-strong"),
+      });
+      volume.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    }
+    candles.priceScale().applyOptions({ scaleMargins: { top: 0.08, bottom: showVolume ? 0.25 : 0.08 } });
 
     chartRef.current = chart;
     candleRef.current = candles;
@@ -86,6 +91,8 @@ export function PriceChart({ bars, currency, markers, height = 420 }: Props) {
       chartRef.current = candleRef.current = volumeRef.current = null;
       markersRef.current = null;
     };
+    // showVolume は最初の1回だけ見る(途中で切り替えない)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 2. 通貨に合わせて価格の表示桁数を変える
@@ -98,11 +105,11 @@ export function PriceChart({ bars, currency, markers, height = 420 }: Props) {
 
   // 3. データが変わったら差し替える
   useEffect(() => {
-    if (!candleRef.current || !volumeRef.current || !chartRef.current) return;
+    if (!candleRef.current || !chartRef.current) return;
     candleRef.current.setData(
       bars.map((b) => ({ time: b.date, open: b.open, high: b.high, low: b.low, close: b.close })),
     );
-    volumeRef.current.setData(bars.map((b) => ({ time: b.date, value: b.volume })));
+    volumeRef.current?.setData(bars.map((b) => ({ time: b.date, value: b.volume })));
     chartRef.current.timeScale().fitContent();
   }, [bars]);
 

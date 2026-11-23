@@ -76,7 +76,11 @@ class PointOut(BaseModel):
     drawdown: float
     benchmark_drawdown: float
     position: int
-    close: float  # 調整済み終値(チャート用)
+    # 調整済みの4本値(チャート用)。約定価格と同じ基準なので、取引の印とずれない
+    open: float
+    high: float
+    low: float
+    close: float
 
 
 class TradeOut(BaseModel):
@@ -123,6 +127,8 @@ class BacktestOut(BaseModel):
     trades: list[TradeOut]
     monthly_returns: list[PeriodReturn]
     yearly_returns: list[PeriodReturn]
+    benchmark_monthly_returns: list[PeriodReturn]
+    benchmark_yearly_returns: list[PeriodReturn]
     skipped_orders: list[NoteOut]
     reduced_orders: list[NoteOut]
     pending_signal: Literal["buy", "sell"] | None
@@ -163,6 +169,9 @@ def create_backtest(body: BacktestIn, provider: Provider):
             drawdown=float(run.drawdown.iat[i]),
             benchmark_drawdown=float(run.benchmark_drawdown.iat[i]),
             position=int(r.position.iat[i]),
+            open=float(run.prices["open"].iat[i]),
+            high=float(run.prices["high"].iat[i]),
+            low=float(run.prices["low"].iat[i]),
             close=float(run.prices["close"].iat[i]),
         )
         for i, ts in enumerate(r.equity.index)
@@ -191,14 +200,20 @@ def create_backtest(body: BacktestIn, provider: Provider):
             )
             for t in r.trades
         ],
-        monthly_returns=[PeriodReturn(period=str(k), ret=float(v)) for k, v in run.monthly.items()],
-        yearly_returns=[PeriodReturn(period=str(k), ret=float(v)) for k, v in run.yearly.items()],
+        monthly_returns=_periods(run.monthly),
+        yearly_returns=_periods(run.yearly),
+        benchmark_monthly_returns=_periods(run.benchmark_monthly),
+        benchmark_yearly_returns=_periods(run.benchmark_yearly),
         skipped_orders=[_note(n) for n in r.skipped_orders],
         reduced_orders=[_note(n) for n in r.reduced_orders],
         pending_signal=r.pending_signal,
         warmup_bars=run.warmup_bars,
         warnings=run.warnings,
     )
+
+
+def _periods(s) -> list[PeriodReturn]:
+    return [PeriodReturn(period=str(k), ret=float(v)) for k, v in s.items()]
 
 
 def _note(n) -> NoteOut:

@@ -240,6 +240,10 @@ export type SeriesPoint = {
   drawdown: number;
   benchmark_drawdown: number;
   position: number;
+  // 調整済みの4本値(約定価格と同じ基準)
+  open: number;
+  high: number;
+  low: number;
   close: number;
 };
 
@@ -277,6 +281,8 @@ export type BacktestResult = {
   trades: Trade[];
   monthly_returns: { period: string; ret: number }[];
   yearly_returns: { period: string; ret: number }[];
+  benchmark_monthly_returns: { period: string; ret: number }[];
+  benchmark_yearly_returns: { period: string; ret: number }[];
   skipped_orders: OrderNote[];
   reduced_orders: OrderNote[];
   pending_signal: "buy" | "sell" | null;

@@ -26,6 +26,10 @@
   --purple: #9a7bff;
   --cyan: #38cfe0;
 
+  /* グラフの系列色(dataviz の検証済み: 暗い背景で明度・彩度・色覚多様性の区別すべて合格) */
+  --series-strategy: #8466f0;
+  --series-benchmark: #2a9fb0;
+
   /* 損益(Settings で将来入れ替え可能にする) */
   --gain: #34d39a;
   --loss: #ff6b6b;
@@ -111,6 +115,8 @@
   --color-purple: var(--purple);
   --color-cyan: var(--cyan);
   --color-gain: var(--gain);
+  --color-series-strategy: var(--series-strategy);
+  --color-series-benchmark: var(--series-benchmark);
   --color-loss: var(--loss);
 
   /* Geist は英数字のみ。日本語は OS のフォントにフォールバックする */

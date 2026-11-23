@@ -43,8 +43,22 @@ def test_backtest_runs_and_is_consistent(client):
     # 最終資産 = 初期資金 + 損益の合計
     assert series[-1]["equity"] == pytest.approx(1_000_000 + sum(t["pnl"] for t in b["trades"]))
     assert b["trades"] and all(t["qty"] % 100 == 0 for t in b["trades"])
+    # 約定価格は、その日の調整済み始値 ± スリッページ(チャートの価格と同じ基準)
+    by_date = {p["date"]: p for p in series}
+    t0 = b["trades"][0]
+    assert t0["entry_price"] == pytest.approx(by_date[t0["entry_date"]]["open"] * 1.0005)
+    assert all(p["low"] <= min(p["open"], p["close"]) for p in series)
     assert b["monthly_returns"][0]["period"] == "2022-01"
     assert [y["period"] for y in b["yearly_returns"]] == ["2022", "2023", "2024"]
+    # 年別リターンを掛け合わせると、期間全体のリターンになる
+    for key, total in (
+        ("yearly_returns", "metrics"),
+        ("benchmark_yearly_returns", "benchmark_metrics"),
+    ):
+        prod = 1.0
+        for y in b[key]:
+            prod *= 1 + y["ret"]
+        assert prod - 1 == pytest.approx(b[total]["total_return"])
 
 
 def test_buy_and_hold_strategy_equals_benchmark(client):
