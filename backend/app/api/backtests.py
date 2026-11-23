@@ -4,21 +4,27 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import Engine
 
 from app.data.base import Interval, MarketDataProvider
 from app.data.factory import get_provider
+from app.db import repository as repo
+from app.db.session import get_engine
 from app.services.backtest import run_strategy_backtest
 from quant import ENGINE_VERSION
 from quant.metrics import Metrics
 from quant.models import BacktestConfig, PriceMode, SizingMode, default_lot_size
+from quant.strategies import get_strategy
 
 router = APIRouter(prefix="/api/backtests", tags=["backtests"])
 Provider = Annotated[MarketDataProvider, Depends(get_provider)]
+Db = Annotated[Engine, Depends(get_engine)]
 
 
 class ConfigIn(BaseModel):
@@ -36,6 +42,7 @@ class ConfigIn(BaseModel):
 
 class BacktestIn(BaseModel):
     symbol: str = Field(min_length=1, max_length=32)
+    symbol_name: str | None = Field(default=None, max_length=200)  # 履歴に表示する銘柄名
     start: date
     end: date
     interval: Interval = Interval.DAILY
@@ -111,8 +118,12 @@ class PeriodReturn(BaseModel):
 
 
 class BacktestOut(BaseModel):
+    id: str | None = None  # 保存したときの ID(GET /api/backtests/{id} で再表示できる)
+    created_at: datetime | None = None
     symbol: str
+    symbol_name: str
     strategy_id: str
+    strategy_name: str
     params: dict[str, float]
     config: dict
     start: date
@@ -137,7 +148,8 @@ class BacktestOut(BaseModel):
 
 
 @router.post("", response_model=BacktestOut)
-def create_backtest(body: BacktestIn, provider: Provider):
+def create_backtest(body: BacktestIn, provider: Provider, db: Db):
+    """実行して、結果を保存してから返す。"""
     c = body.config
     cfg = BacktestConfig(
         initial_capital=c.initial_capital,
@@ -176,9 +188,11 @@ def create_backtest(body: BacktestIn, provider: Provider):
         )
         for i, ts in enumerate(r.equity.index)
     ]
-    return BacktestOut(
+    out = BacktestOut(
         symbol=body.symbol,
+        symbol_name=body.symbol_name or body.symbol,
         strategy_id=run.strategy_id,
+        strategy_name=get_strategy(run.strategy_id).info.name,
         params=run.params,
         config={
             **asdict(cfg),
@@ -210,6 +224,94 @@ def create_backtest(body: BacktestIn, provider: Provider):
         warmup_bars=run.warmup_bars,
         warnings=run.warnings,
     )
+    m = out.metrics
+    run_id = repo.save_run(
+        db,
+        summary=dict(
+            symbol=out.symbol,
+            symbol_name=out.symbol_name,
+            strategy_id=out.strategy_id,
+            strategy_name=out.strategy_name,
+            start=out.series[0].date,
+            end=out.series[-1].date,
+            interval=out.interval.value,
+            provider=out.provider,
+            engine_version=out.engine_version,
+            initial_capital=cfg.initial_capital,
+            total_return=m.total_return,
+            cagr=m.cagr,
+            max_drawdown=m.max_drawdown,
+            sharpe=m.sharpe,
+        ),
+        result_json=out.model_dump(mode="json", exclude={"id", "created_at"}),
+    )
+    saved = repo.get_run(db, run_id)
+    assert saved is not None
+    return out.model_copy(update={"id": run_id, "created_at": saved[0].created_at})
+
+
+class RunSummaryOut(BaseModel):
+    id: str
+    created_at: datetime
+    symbol: str
+    symbol_name: str
+    strategy_id: str
+    strategy_name: str
+    start: date
+    end: date
+    interval: str
+    provider: str
+    initial_capital: float
+    total_return: float
+    cagr: float | None
+    max_drawdown: float
+    sharpe: float | None
+
+
+class RunListOut(BaseModel):
+    items: list[RunSummaryOut]
+    total: int
+
+
+@router.get("", response_model=RunListOut)
+def list_backtests(
+    db: Db,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    symbol: str | None = None,
+):
+    """保存した結果の一覧(新しい順)。"""
+    rows, total = repo.list_runs(db, limit=limit, offset=offset, symbol=symbol)
+    return RunListOut(items=[RunSummaryOut(**asdict(r)) for r in rows], total=total)
+
+
+def _not_found(run_id: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": {
+                "code": "RUN_NOT_FOUND",
+                "message": f"結果 {run_id} が見つかりません(削除された可能性があります)",
+            }
+        },
+    )
+
+
+@router.get("/{run_id}", response_model=BacktestOut)
+def get_backtest(run_id: str, db: Db):
+    """保存した結果を、実行したときと同じ形で返す(再計算はしない)。"""
+    found = repo.get_run(db, run_id)
+    if found is None:
+        return _not_found(run_id)
+    summary, result = found
+    return BacktestOut(**result, id=summary.id, created_at=summary.created_at)
+
+
+@router.delete("/{run_id}", status_code=204)
+def delete_backtest(run_id: str, db: Db):
+    if not repo.delete_run(db, run_id):
+        return _not_found(run_id)
+    return Response(status_code=204)
 
 
 def _periods(s) -> list[PeriodReturn]:

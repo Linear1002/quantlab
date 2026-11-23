@@ -3,6 +3,7 @@ name = "quantlab-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.1",
     "fastapi>=0.165.0",
     "numpy>=2.5.5",
     "openpyxl>=3.1.5",

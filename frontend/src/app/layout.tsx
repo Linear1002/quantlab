@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
+import { PrefsApplier } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -20,7 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="ja"
       className={cn("dark h-full antialiased", GeistSans.variable, GeistMono.variable)}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <PrefsApplier />
+        {children}
+      </body>
     </html>
   );
 }

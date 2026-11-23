@@ -59,7 +59,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/settings",
     label: "設定",
     icon: Settings,
-    description: "デフォルトの手数料・表示設定を変更します。",
+    description: "表示の配色、データのキャッシュ、このブラウザに保存した設定を管理します。",
   },
 ];
 

@@ -71,6 +71,12 @@
   color-scheme: dark;
 }
 
+/* 設定画面で「上昇 = 赤」を選んだとき(<html data-updown="red-up">) */
+html[data-updown="red-up"] {
+  --gain: #ff6b6b;
+  --loss: #34d39a;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

@@ -2,11 +2,9 @@
 
 import { TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useMemo, useSyncExternalStore } from "react";
-import { EmptyState } from "@/components/ui/empty-state";
+import { useMemo } from "react";
 import { Panel } from "@/components/ui/panel";
-import { type Bar, isSyntheticProvider } from "@/lib/api";
-import { useLastResult } from "@/lib/backtest-store";
+import { type BacktestResult, type Bar, isSyntheticProvider } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { DrawdownChart } from "./charts/drawdown-chart";
 import { EquityChart } from "./charts/equity-chart";
@@ -21,22 +19,11 @@ const PriceChart = dynamic(() => import("@/components/charts/price-chart").then(
   ssr: false,
 });
 
-function useResultHydrated() {
-  return useSyncExternalStore(
-    (cb) => useLastResult.persist.onFinishHydration(cb),
-    () => useLastResult.persist.hasHydrated(),
-    () => false,
-  );
-}
-
-/** 分析結果ページ: 概要 → 資産推移 → ドローダウン → 指標 → 売買ポイント → 年別・分布 → 月別 → 取引履歴 */
-export function ResultView() {
-  const hydrated = useResultHydrated();
-  const last = useLastResult((s) => s.last);
-
+/** 分析結果: 概要 → 資産推移 → ドローダウン → 指標 → 売買ポイント → 年別・分布 → 月別 → 取引履歴 */
+export function ResultView({ result: r }: { result: BacktestResult }) {
   const priceBars: Bar[] = useMemo(
     () =>
-      last?.result.series.map((p) => ({
+      r.series.map((p) => ({
         date: p.date,
         open: p.open,
         high: p.high,
@@ -44,34 +31,21 @@ export function ResultView() {
         close: p.close,
         adj_close: p.close,
         volume: 0,
-      })) ?? [],
-    [last],
+      })),
+    [r],
   );
   // 実際に約定した日に印を付ける(シグナルの日ではない)
   const tradeMarkers = useMemo(() => {
-    if (!last) return [];
     const m: { date: string; type: "buy" | "sell" }[] = [];
-    for (const t of last.result.trades) {
+    for (const t of r.trades) {
       m.push({ date: t.entry_date, type: "buy" });
       if (t.status === "closed") m.push({ date: t.exit_date, type: "sell" });
     }
     return m.sort((a, b) => a.date.localeCompare(b.date));
-  }, [last]);
+  }, [r]);
 
-  if (!hydrated) return <p className="text-sm text-muted-foreground">読み込んでいます</p>;
-  if (!last) {
-    return (
-      <Panel title="結果">
-        <EmptyState
-          title="表示できる結果がありません"
-          body="バックテストを実行すると、ここにリターン・リスク指標と、Buy and Hold との比較が表示されます。"
-          action={{ href: "/backtest", label: "バックテストを設定する" }}
-        />
-      </Panel>
-    );
-  }
-
-  const { result: r, symbolName, strategyName } = last;
+  const symbolName = r.symbol_name;
+  const strategyName = r.strategy_name;
   const currency = r.symbol.toUpperCase().endsWith(".T") ? "JPY" : "USD";
   const final = r.series.at(-1)!;
   const initial = r.config.initial_capital;
@@ -91,6 +65,7 @@ export function ResultView() {
             {symbolName}({r.symbol})× {strategyName}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
+            {r.created_at && <>{new Date(r.created_at).toLocaleString("ja-JP")} に実行 ・ </>}
             {r.series[0].date} 〜 {final.date} ・ {r.interval === "1d" ? "日足" : "週足"} ・ {r.series.length} 本 ・ 初期資金{" "}
             {formatPrice(initial, currency)}
           </p>

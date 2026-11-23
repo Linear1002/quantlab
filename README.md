@@ -53,6 +53,12 @@ npm run test:e2e             # E2E(専用サーバーを 8001 / 3001 で自動�
 WSL の中で `code .` を実行して開く(左下に「WSL: Ubuntu」と表示されればOK)。
 推奨拡張機能: Python, Ruff, ESLint, Tailwind CSS IntelliSense, Playwright Test
 
+## データベース
+- 既定は `backend/quantlab.db`(SQLite)。起動時に自動でテーブルを作成・更新する(Alembic)
+- テーブルを変えたら: `cd backend && uv run alembic revision --autogenerate -m "説明"` → 生成されたファイルを確認してコミット
+- PostgreSQL に移るとき: `QUANTLAB_DATABASE_URL=postgresql+psycopg://...` を設定して `uv run alembic upgrade head`
+- E2E テストは `backend/.e2e.db` を使う(普段の DB には書き込まない)
+
 ## よく使うコマンド
 | 目的 | コマンド |
 |---|---|

@@ -65,17 +65,24 @@ class MarketDataProvider(ABC):
 | GET | /api/strategies | 戦略一覧+パラメータ仕様 | 4 |
 | POST | /api/strategies/{id}/signals | 選択中の銘柄・期間での売買シグナル(損益計算なし) | 4 |
 | POST | /api/backtests | 実行して結果を返す(Buy and Hold の比較つき)。保存は Phase 7 | 5 |
-| GET | /api/backtests | 履歴一覧 | 7 |
+| GET | /api/backtests?limit=&offset=&symbol= | 履歴一覧(新しい順) | 7 |
 | GET | /api/backtests/{id} | 結果の再表示 | 7 |
 | DELETE | /api/backtests/{id} | 削除 | 7 |
+| GET | /api/system/status | データ元・日本語検索・キャッシュ・保存件数 | 7 |
+| DELETE | /api/system/cache | 株価のキャッシュを削除(結果は残す) | 7 |
 
 エラーレスポンスの形式は統一する: `{"error": {"code": "SYMBOL_NOT_FOUND", "message": "...", "detail": {...}}}`
 
-## 4. DB(SQLite、SQLAlchemy 2.0)
-- `ohlcv_cache(provider, symbol, interval, date, open, high, low, close, adj_close, volume, fetched_at)` PK=(provider,symbol,interval,date)
-- `backtest_runs(id, created_at, symbol, strategy_id, params_json, config_json, start, end, metrics_json, result_blob, data_provider, engine_version)`
+## 4. DB(SQLite、SQLAlchemy 2.0 Core + Alembic)
+- `ohlcv_bars` / `ohlcv_coverage`: 株価のキャッシュ(§2.2)
+- `backtest_runs`: 実行結果。一覧で使う値(銘柄・戦略・期間・Total Return・CAGR・MDD・Sharpe)は列、
+  画面の再表示に使う結果全体は `result_json`(JSON 型。SQLite / PostgreSQL の両方で使える)
   - `engine_version` を保存しておき、エンジンを直した後に古い結果と見分けられるようにする
-- 移行は Alembic を Phase 7 で導入する。SQLite 固有の型は使わない
+- テーブルの変更は Alembic で管理(`backend/alembic/versions/`)。アプリ起動時に自動で最新にする
+  - 0001: キャッシュの2テーブル / 0002: backtest_runs
+  - Phase 3〜6 に Alembic なしで作った DB は、0001 を適用済みとして記録してから 0002 を適用する(データは消えない)
+  - テスト `test_migrations_match_table_definitions` で「tables.py とマイグレーションの食い違い」を検出する
+- SQLite 固有の型・機能は使わない。PostgreSQL に移るときは `QUANTLAB_DATABASE_URL` を変えて `uv run alembic upgrade head`
 
 ## 5. フロントエンド
 - Next.js App Router、TypeScript strict

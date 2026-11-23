@@ -11,12 +11,12 @@ from app.data.cache import CachedProvider
 from app.data.fixture import FixtureProvider
 from app.data.jp_master import JpMaster
 from app.data.yahoo import YahooProvider
-from app.db.session import make_engine
+from app.db.session import get_engine
 
 log = logging.getLogger(__name__)
 
 
-def create_provider(kind: str, database_url: str) -> MarketDataProvider:
+def create_provider(kind: str) -> MarketDataProvider:
     if kind == "yahoo":
         jp = JpMaster.load()
         if jp is None:
@@ -24,7 +24,7 @@ def create_provider(kind: str, database_url: str) -> MarketDataProvider:
                 "data/jpx_listed.csv がありません。日本語名での検索は無効です。"
                 " `uv run python scripts/update_jpx_master.py` で作成してください"
             )
-        return CachedProvider(YahooProvider(jp_master=jp), make_engine(database_url))
+        return CachedProvider(YahooProvider(jp_master=jp), get_engine())
     if kind == "fixture":
         log.warning("テスト用の合成データ(fixture)を使っています。実データではありません")
         return FixtureProvider()
@@ -35,7 +35,7 @@ def create_provider(kind: str, database_url: str) -> MarketDataProvider:
 def get_provider() -> MarketDataProvider:
     """FastAPI の Depends で使う。テストでは app.dependency_overrides で差し替える。"""
     s = get_settings()
-    return create_provider(s.data_provider, s.database_url)
+    return create_provider(s.data_provider)
 
 
 def jp_search_available(provider: MarketDataProvider) -> bool:

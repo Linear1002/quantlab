@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { C, fmtPct } from "./chart-kit";
+import { fmtPct } from "./chart-kit";
 
 type PR = { period: string; ret: number };
 type Props = {
@@ -94,7 +94,8 @@ export function MonthlyHeatmap({ strategyName, monthly, yearly, benchmarkMonthly
 function Cell({ value, scale, strong }: { value: number | undefined; scale: number; strong?: boolean }) {
   if (value === undefined) return <td className="rounded-sm bg-panel/40 px-1 py-1.5" />;
   const intensity = Math.min(1, Math.abs(value) / scale);
-  const color = value >= 0 ? C.gain : C.loss;
+  // CSS 変数を使うので、設定画面の「上昇 = 赤」にも追従する
+  const color = value >= 0 ? "var(--gain)" : "var(--loss)";
   // 濃さは 8%〜60%(文字が読めるように上限を抑える)。
   // oklch で混ぜると、紺色の背景と混ざるときに色相がずれる(緑 → 青緑、赤 → 紫)ので srgb で混ぜる
   const bg = `color-mix(in srgb, ${color} ${Math.round(8 + intensity * 52)}%, var(--panel))`;

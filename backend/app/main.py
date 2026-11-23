@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import backtests, health, stocks, strategies
+from app.api import backtests, health, stocks, strategies, system
 from app.config import get_settings
 from app.data.base import (
     InvalidRequestError,
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(stocks.router)
     app.include_router(strategies.router)
     app.include_router(backtests.router)
+    app.include_router(system.router)
     _register_error_handlers(app)
     return app
 

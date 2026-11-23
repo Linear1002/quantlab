@@ -15,7 +15,7 @@ from app.main import app
 def client():
     app.dependency_overrides[get_provider] = lambda: FixtureProvider(today=date(2026, 11, 20))
     yield TestClient(app)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_provider, None)
 
 
 def test_search(client):
@@ -105,4 +105,4 @@ def test_rate_limit_maps_to_429():
         res = TestClient(app).get("/api/stocks/search", params={"q": "x"})
         assert res.status_code == 429 and res.json()["error"]["code"] == "RATE_LIMITED"
     finally:
-        app.dependency_overrides.clear()
+        app.dependency_overrides.pop(get_provider, None)

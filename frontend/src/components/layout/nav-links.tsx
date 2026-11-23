@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { isActive, NAV_ITEMS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -13,15 +14,30 @@ type Props = {
   layoutId: string;
 };
 
-/** サイドバーとモバイルメニューで共通のナビゲーションリンク一覧 */
-export function NavLinks({ onNavigate, layoutId }: Props) {
-  const pathname = usePathname();
+/**
+ * サイドバーとモバイルメニューで共通のナビゲーションリンク一覧。
+ * URL(usePathname)は /results/[id] のような動的なページではリクエスト時にしか分からないので、
+ * Suspense の中で読む(Next.js 16 の決まり)。読めるまでは、選択中の表示なしで同じリンクを出す。
+ */
+export function NavLinks(props: Props) {
+  return (
+    <Suspense fallback={<NavList {...props} pathname={null} />}>
+      <NavLinksWithPath {...props} />
+    </Suspense>
+  );
+}
 
+function NavLinksWithPath(props: Props) {
+  const pathname = usePathname();
+  return <NavList {...props} pathname={pathname} />;
+}
+
+function NavList({ onNavigate, layoutId, pathname }: Props & { pathname: string | null }) {
   return (
     <nav aria-label="メインメニュー">
       <ul className="flex flex-col gap-0.5">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
+          const active = pathname !== null && isActive(pathname, href);
           return (
             <li key={href}>
               <Link

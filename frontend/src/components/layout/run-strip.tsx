@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { isActive } from "@/lib/nav";
 import { useSelection, useSelectionHydrated } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -22,8 +23,19 @@ type Step = {
  * どこまで選んだかを示し、各ステップの画面へのリンクも兼ねる。
  */
 export function RunStrip() {
-  const pathname = usePathname();
-  const hydrated = useSelectionHydrated();
+  // URL は Suspense の中で読む(nav-links.tsx と同じ理由)
+  return (
+    <Suspense fallback={<RunStripView pathname={null} fallback />}>
+      <RunStripWithPath />
+    </Suspense>
+  );
+}
+
+function RunStripWithPath() {
+  return <RunStripView pathname={usePathname()} />;
+}
+
+function RunStripView({ pathname, fallback = false }: { pathname: string | null; fallback?: boolean }) {  const hydrated = useSelectionHydrated();
   const symbol = useSelection((s) => s.symbol);
   const strategy = useSelection((s) => s.strategy);
 
@@ -64,13 +76,14 @@ export function RunStrip() {
 
   return (
     <div
-      data-testid="run-strip"
+      data-testid={fallback ? undefined : "run-strip"}
+      aria-hidden={fallback || undefined}
       className="sticky top-14 z-20 border-b border-line bg-ink/90 backdrop-blur md:top-0"
     >
       <ol className="flex items-stretch">
         {steps.map((step, i) => {
           const done = step.value !== null;
-          const current = isActive(pathname, step.href);
+          const current = pathname !== null && isActive(pathname, step.href);
           return (
             <li key={step.n} className="flex min-w-0 flex-1 items-stretch">
               <Link
@@ -85,7 +98,7 @@ export function RunStrip() {
                 <span className="min-w-0">
                   <span className="block text-xs text-faint">{step.label}</span>
                   <span
-                    data-testid={`run-strip-step-${step.n}`}
+                    data-testid={fallback ? undefined : `run-strip-step-${step.n}`}
                     className={cn(
                       "block truncate text-sm",
                       done ? "text-foreground" : "text-muted-foreground",

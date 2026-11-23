@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, runBacktest } from "@/lib/api";
-import { type ConfigForm, useBacktestConfig, useLastResult } from "@/lib/backtest-store";
+import { type ConfigForm, useBacktestConfig } from "@/lib/backtest-store";
 import { formatCount } from "@/lib/format";
 import { useSelection, useSelectionHydrated } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,6 @@ export function BacktestForm() {
   const byMarket = useBacktestConfig((s) => s.byMarket);
   const setConfig = useBacktestConfig((s) => s.setConfig);
   const resetConfig = useBacktestConfig((s) => s.resetConfig);
-  const setLast = useLastResult((s) => s.setLast);
 
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
@@ -99,6 +98,7 @@ export function BacktestForm() {
     try {
       const result = await runBacktest({
         symbol: symbol.symbol,
+        symbol_name: symbol.name,
         start: period.start,
         end: period.end,
         interval,
@@ -107,8 +107,8 @@ export function BacktestForm() {
         config,
         risk_free_rate,
       });
-      setLast({ result, symbolName: symbol.name, strategyName: strategy.name, ranAt: new Date().toISOString() });
-      router.push("/results");
+      // 結果は backend に保存済み。ID 付きの URL に移動する(あとから同じ URL で開き直せる)
+      router.push(`/results/${result.id}`);
     } catch (e) {
       setError(e instanceof ApiError ? e : new ApiError(0, "UNKNOWN", String(e)));
       setRunning(false);

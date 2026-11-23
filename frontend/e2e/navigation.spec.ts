@@ -30,7 +30,8 @@ test("メニューから全ての画面に移動できる", async ({ page }) => 
   await page.goto("/");
   for (const { href, heading } of PAGES) {
     await navigateTo(page, heading);
-    await expect(page).toHaveURL(href);
+    // /results は、保存した結果があれば最新の結果(/results/{id})に移動する
+    await expect(page).toHaveURL(href === "/results" ? /\/results(\/[0-9a-f-]{36})?$/ : href);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading);
   }
 });

@@ -162,3 +162,29 @@
 1. フロントエンドの計算(ヒストグラムのビン分け)に単体テストが無い → Phase 8 で vitest を入れる
 2. 1万本を超える長期の日足では、Recharts の描画が重くなる可能性 → 実データで確認し、必要なら間引く
 3. 結果の保存・履歴 → Phase 7
+
+## Phase 7: 履歴保存・設定 (2026-11-23)
+
+### 実装したもの
+- DB: `backtest_runs` テーブル、Alembic の導入(マイグレーション 0001 / 0002、起動時に自動適用、既存 DB の引き継ぎ)
+- `app/db/repository.py`: save_run / list_runs / get_run / delete_run
+- API: 実行時に自動保存(`POST /api/backtests` が id を返す)、`GET /api/backtests`(一覧・ページ送り・銘柄で絞り込み)、`GET /api/backtests/{id}`(再表示)、`DELETE`、`/api/system/status`、`/api/system/cache`
+- 画面: 結果の URL を `/results/{id}` に変更(sessionStorage は廃止)、`/results` は最新の結果へ移動、履歴(一覧・2段階削除・ページ送り)、ダッシュボードに最近5件、設定(損益の色・データの状態・キャッシュ削除・ブラウザ設定の初期化)
+
+### テスト結果(クラウド作業環境)
+| 項目 | 結果 |
+|---|---|
+| pytest | 249 passed(マイグレーションと定義の一致、旧 DB の引き継ぎ、保存 → 再表示で完全一致、失敗した実行は保存しない など) |
+| ruff / tsc / eslint / next build | OK |
+| Playwright(desktop / mobile) | 69 passed、1 skipped |
+
+### 実装中に見つけて直したこと
+- テストが本物の `quantlab.db` に書き込んでいた → conftest.py で全テストを一時 DB に
+- E2E が普段の DB に合成データの結果を保存してしまう → E2E 専用の `.e2e.db` を毎回作り直す
+- Next.js 16: 動的ページ(/results/[id])で URL を読む部品は Suspense が必要 → サイドバーと3ステップ表示を Suspense で包んだ
+- 設定画面: 保存した色の設定の読み込み前に描画すると、サーバーの HTML と食い違ってクリックが効かない → 読み込み完了を待つ
+- 履歴の表(スマホ): 画面読み上げ用の非表示テキスト(position: absolute)がスクロール枠の外にはみ出し、ページが横にずれていた → 枠に relative
+
+### 未解決の課題
+1. 保存した結果は、後でエンジンを変えても再計算しない(engine_version で区別する)。古い形式の JSON を読めなくなった場合の対応は未実装
+2. 履歴の並べ替え(リターン順など)は未対応(新しい順のみ)

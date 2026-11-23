@@ -2,12 +2,11 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { BacktestConfigIn, BacktestResult, Market } from "./api";
+import type { BacktestConfigIn, Market } from "./api";
 
 /**
- * バックテストの設定(市場ごとに保持)と、最後に実行した結果。
- * - 設定は localStorage(次に開いたときも同じ設定)
- * - 結果は sessionStorage(タブを閉じたら消える。保存・履歴は Phase 7 で DB に)
+ * バックテストの設定(市場ごとに保持)。localStorage に保存するので、次に開いたときも同じ設定。
+ * 結果は backend の DB に保存する(/results/{id} で再表示できる)。
  */
 
 export type ConfigForm = BacktestConfigIn & { risk_free_rate: number };
@@ -57,26 +56,6 @@ export const useBacktestConfig = create<ConfigState>()(
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: ({ byMarket }) => ({ byMarket }),
-    },
-  ),
-);
-
-type ResultState = {
-  /** 結果と、実行したときの銘柄名・戦略名(表示用) */
-  last: { result: BacktestResult; symbolName: string; strategyName: string; ranAt: string } | null;
-  setLast: (r: ResultState["last"]) => void;
-};
-
-export const useLastResult = create<ResultState>()(
-  persist(
-    (set) => ({
-      last: null,
-      setLast: (last) => set({ last }),
-    }),
-    {
-      name: "quantlab-last-result",
-      version: 1,
-      storage: createJSONStorage(() => sessionStorage),
     },
   ),
 );

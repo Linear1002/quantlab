@@ -21,15 +21,16 @@ async function request<T>(
   params?: Params,
   signal?: AbortSignal,
   body?: unknown,
+  method?: "GET" | "POST" | "DELETE",
 ): Promise<T> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined) qs.set(k, v);
   const url = `${API_BASE_URL}${path}${qs.size ? `?${qs}` : ""}`;
   const init: RequestInit =
     body === undefined
-      ? { cache: "no-store", signal }
+      ? { method: method ?? "GET", cache: "no-store", signal }
       : {
-          method: "POST",
+          method: method ?? "POST",
           cache: "no-store",
           signal,
           headers: { "Content-Type": "application/json" },
@@ -51,6 +52,7 @@ async function request<T>(
       body?.error?.message ?? `HTTP ${res.status}`,
     );
   }
+  if (res.status === 204) return undefined as T; // 削除などで本文が無いとき
   return (await res.json()) as T;
 }
 
@@ -210,6 +212,7 @@ export type BacktestConfigIn = {
 
 export type BacktestRequest = {
   symbol: string;
+  symbol_name?: string;
   start: string;
   end: string;
   interval: Interval;
@@ -265,8 +268,12 @@ export type Trade = {
 export type OrderNote = { date: string; reason: string; requested_qty: number; filled_qty: number };
 
 export type BacktestResult = {
+  id: string | null;
+  created_at: string | null;
   symbol: string;
+  symbol_name: string;
   strategy_id: string;
+  strategy_name: string;
   params: Record<string, number>;
   config: BacktestConfigIn & { long_only: boolean };
   start: string;
@@ -292,6 +299,58 @@ export type BacktestResult = {
 
 export const runBacktest = (body: BacktestRequest, signal?: AbortSignal) =>
   request<BacktestResult>("/api/backtests", undefined, signal, body);
+
+// ---- 履歴 ------------------------------------------------------------------
+
+export type RunSummary = {
+  id: string;
+  created_at: string;
+  symbol: string;
+  symbol_name: string;
+  strategy_id: string;
+  strategy_name: string;
+  start: string;
+  end: string;
+  interval: Interval;
+  provider: string;
+  initial_capital: number;
+  total_return: number;
+  cagr: number | null;
+  max_drawdown: number;
+  sharpe: number | null;
+};
+
+export const listRuns = (limit: number, offset: number, signal?: AbortSignal) =>
+  request<{ items: RunSummary[]; total: number }>(
+    "/api/backtests",
+    { limit: String(limit), offset: String(offset) },
+    signal,
+  );
+
+export const getRun = (id: string, signal?: AbortSignal) =>
+  request<BacktestResult>(`/api/backtests/${encodeURIComponent(id)}`, undefined, signal);
+
+export const deleteRun = (id: string) =>
+  request<void>(`/api/backtests/${encodeURIComponent(id)}`, undefined, undefined, undefined, "DELETE");
+
+// ---- システム(設定画面)----------------------------------------------------
+
+export type SystemStatus = {
+  data_provider: string;
+  engine_version: string;
+  database: string;
+  jp_master_count: number | null;
+  jp_master_updated_at: string | null;
+  cache_symbols: number;
+  cache_bars: number;
+  saved_runs: number;
+};
+
+export const getSystemStatus = (signal?: AbortSignal) =>
+  request<SystemStatus>("/api/system/status", undefined, signal);
+
+export const clearCache = () =>
+  request<{ deleted_bars: number }>("/api/system/cache", undefined, undefined, undefined, "DELETE");
 
 /** 合成データ(テスト用)のデータ元か。画面に警告を出すために使う */
 export const isSyntheticProvider = (provider: string) => provider === "fixture";

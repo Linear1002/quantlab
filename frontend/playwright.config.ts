@@ -24,12 +24,14 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `uv run uvicorn app.main:app --port ${API_PORT}`,
+      // 毎回まっさらな E2E 専用の DB(.e2e.db)で始める。普段の quantlab.db には書き込まない
+      command: `rm -f .e2e.db && uv run uvicorn app.main:app --port ${API_PORT}`,
       cwd: "../backend",
       url: `http://localhost:${API_PORT}/api/health`,
       reuseExistingServer: false,
       env: {
         QUANTLAB_DATA_PROVIDER: "fixture",
+        QUANTLAB_DATABASE_URL: "sqlite:///./.e2e.db",
         QUANTLAB_CORS_ORIGINS: `["http://localhost:${WEB_PORT}"]`,
       },
     },

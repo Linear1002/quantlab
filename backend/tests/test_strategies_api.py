@@ -14,7 +14,7 @@ from app.services.signals import warmup_start
 def client():
     app.dependency_overrides[get_provider] = lambda: FixtureProvider(today=date(2026, 11, 20))
     yield TestClient(app)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_provider, None)
 
 
 def test_list_strategies(client):

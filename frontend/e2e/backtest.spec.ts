@@ -33,13 +33,13 @@ test("設定を確認して実行すると、結果ページに指標の比較�
   await expect(page.getByLabel("単元株数")).toHaveValue("100");
 
   await page.getByRole("button", { name: "バックテストを実行" }).click();
-  await expect(page).toHaveURL(/\/results$/);
+  await expect(page).toHaveURL(/\/results\/[0-9a-f-]{36}$/);
   await expect(page.getByTestId("final-equity")).toContainText("円");
   await expect(page.getByRole("alert").filter({ hasText: "合成データ" })).toBeVisible();
   for (const key of ["total_return", "cagr", "sharpe", "sortino", "max_drawdown", "volatility", "win_rate", "profit_factor", "total_trades"]) {
     await expect(page.getByTestId(`metric-${key}`)).toBeVisible();
   }
-  // リロードしても(同じタブなら)結果が残る
+  // 結果は保存されているので、リロードしても(同じ URL で)開ける
   await page.reload();
   await expect(page.getByTestId("final-equity")).toBeVisible();
 });
@@ -76,9 +76,8 @@ test("戦略が未選択なら実行ボタンは押せない", async ({ page }) 
   await expect(page.getByRole("button", { name: "バックテストを実行" })).toBeDisabled();
 });
 
-test("結果が無いときは、結果ページに案内が出る", async ({ page }) => {
-  await page.goto("/results");
-  await page.evaluate(() => sessionStorage.clear());
-  await page.reload();
-  await expect(page.getByText("表示できる結果がありません")).toBeVisible();
+test("存在しない結果の URL を開くと案内が出る", async ({ page }) => {
+  await page.goto("/results/00000000-0000-0000-0000-000000000000");
+  await expect(page.getByText("この結果は見つかりません")).toBeVisible();
+  await expect(page.getByRole("link", { name: "履歴を見る" })).toBeVisible();
 });

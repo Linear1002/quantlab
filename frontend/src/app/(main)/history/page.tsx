@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { SectionPage } from "@/components/layout/section-page";
+import { RunList } from "@/components/history/run-list";
+import { PageHeader } from "@/components/layout/page-header";
+import { Panel } from "@/components/ui/panel";
+import { NAV_ITEMS } from "@/lib/nav";
 
 export const metadata: Metadata = { title: "履歴" };
 
+const nav = NAV_ITEMS.find((n) => n.href === "/history")!;
+
 export default function HistoryPage() {
   return (
-    <SectionPage
-      href="/history"
-      panelTitle="実行履歴"
-      empty={{
-        title: "まだバックテストを実行していません",
-        body: "実行したバックテストは自動で保存され、銘柄・戦略・期間・リターン・最大ドローダウンを一覧で比べられます。",
-        action: { href: "/stocks", label: "銘柄を選ぶ" },
-      }}
-    />
+    <div className="space-y-8">
+      <PageHeader title={nav.label} description={nav.description} />
+      <Panel title="実行履歴">
+        <RunList />
+      </Panel>
+    </div>
   );
 }

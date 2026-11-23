@@ -12,7 +12,7 @@ from app.main import app
 def client():
     app.dependency_overrides[get_provider] = lambda: FixtureProvider(today=date(2026, 11, 20))
     yield TestClient(app)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_provider, None)
 
 
 def run(client, **kw):

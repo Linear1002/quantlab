@@ -21,7 +21,7 @@ async function runBacktest(page: Page) {
   });
   await page.reload();
   await page.getByRole("button", { name: "バックテストを実行" }).click();
-  await expect(page).toHaveURL(/\/results$/);
+  await expect(page).toHaveURL(/\/results\/[0-9a-f-]{36}$/);
 }
 
 test("結果ページにすべてのグラフと取引履歴が表示される", async ({ page }) => {
