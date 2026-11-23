@@ -1,7 +1,7 @@
 """実際の Yahoo Finance に接続して、データの仕様を確認するテスト(QUANT_SPEC §2.1)。
 
 ネットワークが必要なので、通常の `uv run pytest` では実行しない。
-実行: uv run pytest -m network -v
+実行: uv run pytest -m network -v -s(-s を付けると、確認用の数値も表示される)
 """
 
 from datetime import date
@@ -49,7 +49,13 @@ def test_adj_close_is_dividend_adjusted(yahoo, symbol):
     factor = df["adj_close"] / df["close"]
     print(f"{symbol}: 調整係数 最初 {factor.iloc[0]:.4f} / 最後 {factor.iloc[-1]:.4f}")
     assert factor.iloc[0] < factor.iloc[-1] <= 1.0 + 1e-9
-    assert factor.is_monotonic_increasing  # 過去ほど係数が小さい(配当が積み重なる)
+    # 過去ほど係数が小さい(配当が積み重なる)。ただし Yahoo の Adj Close は丸められているので、
+    # 配当の無い日でも係数が 1e-6 程度ゆれる(実データで 0.992041 → 0.992042 → 0.992041 を確認)。
+    # そのゆれは許し、それより大きな「逆戻り」が無いことを確認する
+    step = factor.diff().dropna()
+    print(f"{symbol}: 最大の逆戻り {step.min():.2e} / 配当による上昇 {int((step > 1e-4).sum())} 回")
+    assert step.min() > -1e-5
+    assert (step > 1e-4).sum() >= 2  # 2年間に配当が2回以上あるはず(トヨタ・Apple とも)
 
 
 def test_search_and_quote_work(yahoo):

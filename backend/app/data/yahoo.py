@@ -102,6 +102,10 @@ class YahooProvider(MarketDataProvider):
     ):
         # ticker_factory / search_factory はテストで偽物に差し替えるための引数
         self._jp = jp_master
+        # yfinance は既定でエラーを握りつぶして空のデータを返す。それだと「銘柄が無い」のか
+        # 「通信に失敗した」のか区別できないので、例外を投げる設定にする
+        # (yfinance 1.8 で history(raise_errors=True) は非推奨になり、この設定に置き換わった)
+        yf.config.debug.hide_exceptions = False
         self._ticker = ticker_factory
         self._search = search_factory
 
@@ -118,7 +122,6 @@ class YahooProvider(MarketDataProvider):
                 interval=interval.value,
                 auto_adjust=False,  # Close と Adj Close の両方を受け取る
                 actions=False,
-                raise_errors=True,
             )
         except yfe.YFPricesMissingError:
             # 銘柄は存在するが、その期間にデータが無い
@@ -133,7 +136,7 @@ class YahooProvider(MarketDataProvider):
         """直近の日足の最終行から最新値を作る。取引時間中は「取引中の値」になる。"""
         try:
             t = self._ticker(symbol)
-            raw = t.history(period="10d", interval="1d", auto_adjust=False, raise_errors=True)
+            raw = t.history(period="10d", interval="1d", auto_adjust=False)
         except Exception as e:  # noqa: BLE001
             raise _translate_error(e, symbol) from e
         if raw is None or raw.empty:
