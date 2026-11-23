@@ -23,3 +23,23 @@
 1. Close が分割調整済みかどうかの確認(配当未調整・tz 付きは確認済み)→ Phase 3
 2. shadcn/ui の初期化(クラウド環境から ui.shadcn.com に接続できないため)→ Phase 2 の最初に WSL2 で実行
 3. pytest の StarletteDeprecationWarning(httpx → httpx2 への移行)。実害はない。後で対応する
+
+## Phase 2: デザインシステム・画面構築 (2026-11-23)
+
+### 実装したもの
+- デザイントークン(`globals.css`)と `docs/DESIGN_SYSTEM.md`
+- サイドバー(PC)/ ドロワーメニュー(スマホ)、7画面のルーティング、404ページ
+- 3ステップ表示 `RunStrip`(選択状態を zustand + localStorage で保持)
+- 未実装の画面は EmptyState で「何が無いか・何ができるようになるか」を表示(ダミーの数値は出さない)
+
+### テスト結果(クラウド作業環境)
+| 項目 | 結果 |
+|---|---|
+| tsc / eslint / next build | OK |
+| Playwright(desktop / mobile) | 10 passed |
+| 目視確認(スクリーンショット) | PC 1440px、スマホ Pixel 7 |
+
+### 未解決の課題
+1. shadcn init が `layout.tsx` に Google Fonts の読み込みを追加していたので削除した(`geist` パッケージで統一)。今後 `shadcn add` を使うときも、layout.tsx が書き換えられていないか確認する
+2. 銘柄・戦略を選ぶ UI はまだ無い(Phase 3 / 4)。RunStrip の表示確認は、E2E テストで localStorage に直接値を入れて行っている
+3. pytest の StarletteDeprecationWarning(Phase 1 から継続)

@@ -1,24 +1,26 @@
-import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
+import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
-import "./globals.css";
-import { Geist } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 import { cn } from "@/lib/utils";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "QuantLab",
-  description: "Quant strategy backtesting lab",
+  title: { default: "QuantLab", template: "%s | QuantLab" },
+  description: "株式の投資戦略を実データで検証するバックテストツール",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export const viewport: Viewport = {
+  themeColor: "#05070d",
+};
+
+// フォントは geist パッケージから読み込む(ビルド時に Google Fonts へ接続しない)
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="ja"
-      className={cn("dark", "h-full", "antialiased", GeistSans.variable, GeistMono.variable, "font-sans", geist.variable)}
+      className={cn("dark h-full antialiased", GeistSans.variable, GeistMono.variable)}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }
