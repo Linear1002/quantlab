@@ -34,6 +34,8 @@ cp .env.example .env
 uv sync                      # .venv を作って依存をインストール
 uv run pytest                # テスト(14件が通ればOK)
 uv run python scripts/check_yahoo.py   # 実データが取れるか確認
+uv run python scripts/update_jpx_master.py   # 日本語の銘柄名検索用の一覧を作る(月1回程度)
+uv run pytest -m network -v  # Yahoo の実データで分割・配当の扱いを確認
 uv run uvicorn app.main:app --reload   # http://localhost:8000/docs
 ```
 
@@ -44,7 +46,7 @@ cp .env.example .env.local
 npm ci
 npx playwright install --with-deps chromium   # 初回だけ
 npm run dev                  # http://localhost:3000
-npm run test:e2e             # E2E(backend と frontend を自動起動する)
+npm run test:e2e             # E2E(専用サーバーを 8001 / 3001 で自動起動。合成データを使う)
 ```
 
 ### VS Code

@@ -79,6 +79,18 @@ class DataValidationError(ProviderError):
     code = "INVALID_DATA"
 
 
+class NoDataError(ProviderError):
+    """銘柄は存在するが、指定期間にデータが1行も無いとき。"""
+
+    code = "NO_DATA"
+
+
+class InvalidRequestError(ProviderError):
+    """リクエストの値がおかしいとき(開始日 > 終了日など)。"""
+
+    code = "INVALID_REQUEST"
+
+
 # ---- 抽象クラス ---------------------------------------------------------
 
 

@@ -9,9 +9,6 @@ export function AppSidebar() {
       <div className="mt-8">
         <NavLinks layoutId="sidebar-active" />
       </div>
-      <p className="mt-auto px-3 text-xs leading-relaxed text-faint">
-        データ: Yahoo Finance
-      </p>
     </aside>
   );
 }

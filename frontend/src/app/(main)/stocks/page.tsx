@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { SectionPage } from "@/components/layout/section-page";
+import { PageHeader } from "@/components/layout/page-header";
+import { StockPicker } from "@/components/stocks/stock-picker";
+import { NAV_ITEMS } from "@/lib/nav";
 
 export const metadata: Metadata = { title: "銘柄" };
 
+const nav = NAV_ITEMS.find((n) => n.href === "/stocks")!;
+
 export default function StocksPage() {
   return (
-    <SectionPage
-      href="/stocks"
-      panelTitle="銘柄を検索"
-      empty={{
-        title: "銘柄検索は開発中です",
-        body: "日本株(例: 7203.T トヨタ自動車)と米国株(例: AAPL)を、銘柄名またはティッカーで検索できるようにします。株価チャートと分析期間の指定もこの画面に置きます。",
-      }}
-    />
+    <div className="space-y-8">
+      <PageHeader title={nav.label} description={nav.description} />
+      <StockPicker />
+    </div>
   );
 }

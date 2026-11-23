@@ -14,3 +14,7 @@ node_modules/
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# backend の生成データ
+backend/data/
+.next-e2e/

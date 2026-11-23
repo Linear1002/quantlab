@@ -43,3 +43,27 @@
 1. shadcn init が `layout.tsx` に Google Fonts の読み込みを追加していたので削除した(`geist` パッケージで統一)。今後 `shadcn add` を使うときも、layout.tsx が書き換えられていないか確認する
 2. 銘柄・戦略を選ぶ UI はまだ無い(Phase 3 / 4)。RunStrip の表示確認は、E2E テストで localStorage に直接値を入れて行っている
 3. pytest の StarletteDeprecationWarning(Phase 1 から継続)
+
+## Phase 3: 株価データ取得 (2026-11-23)
+
+### 実装したもの
+- `app/data/yahoo.py` YahooProvider(検索・最新株価・OHLCV)。yfinance の例外を統一エラーに変換、tz を外して現地日付に
+- `app/data/jp_master.py` + `scripts/update_jpx_master.py`: JPX 公式の上場銘柄一覧で日本語名・コード検索
+- `app/data/cache.py`: SQLite キャッシュ(12時間、範囲拡張時は和集合を取り直して調整後終値の不整合を防ぐ)
+- `app/data/validation.py`: OHLCV 検証(QUANT_SPEC §1.2)
+- `app/data/fixture.py`: E2E 用の合成データ(画面に警告を表示)
+- API: `/api/stocks/search`, `/{symbol}/quote`, `/{symbol}/history`。エラーは全て統一形式
+- 画面: 銘柄検索(キーボード操作・市場絞り込み)、最新株価、期間・時間軸の選択、ローソク足+出来高チャート
+
+### テスト結果(クラウド作業環境)
+| 項目 | 結果 |
+|---|---|
+| pytest | 80 passed(network 5件は未実行) |
+| ruff / tsc / eslint / next build | OK |
+| Playwright(desktop / mobile) | 22 passed |
+
+### 未解決の課題
+1. **Yahoo 実データでの確認が未実施**: `uv run pytest -m network -v`(分割調整・配当調整・検索)を WSL2 で実行する
+2. JPX 一覧の CSV は WSL2 で作成が必要(`scripts/update_jpx_master.py`)
+3. キャッシュから読んだ場合は「欠損行を除外しました」の警告が出ない(欠損行は保存時に除外済みのため)。実害はないが、Phase 8 で見直す
+4. 最新株価は日足の最終行から作っているので、取引時間中の値の遅延時間は Yahoo 次第(画面には日付を表示)

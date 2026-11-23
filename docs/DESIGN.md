@@ -33,6 +33,28 @@ class MarketDataProvider(ABC):
 - 実装の切り替えは環境変数 `QUANTLAB_DATA_PROVIDER=yahoo`(`app/data/factory.py`)
 - キャッシュ(`app/data/cache.py`)は Provider を包むデコレータとして作り、どの Provider にも使えるようにする
 
+### 2.1 データ層の仕様(Phase 3)
+| ファイル / 関数 | 入力 | 出力 | 例外・挙動 |
+|---|---|---|---|
+| `yahoo.py` `YahooProvider.get_ohlcv(symbol, start, end, interval)` | end は**その日を含む** | 列 `open..volume`、tz なしの昇順 DatetimeIndex(名前 `date`) | yfinance の end は「含まない」ので内部で end+1日を渡す。`YFRateLimitError`→`RateLimitError`、銘柄不明→`SymbolNotFoundError`、期間内データ無し→空 DataFrame、通信失敗→`ProviderUnavailableError` |
+| `YahooProvider.get_quote(symbol)` | | 直近の日足最終行の終値(**配当未調整の実際の価格**)と前日比 | 取引時間中は「取引中の最新値」になる。`as_of` に日付を入れて、いつの値かを必ず表示する |
+| `YahooProvider.search(query, market)` | 銘柄名・ティッカー・4桁コード | `SymbolInfo` のリスト(最大20件) | 日本語名・コードは JPX 一覧から、英語名・ティッカーは Yahoo 検索から探して統合する。株式と ETF 以外は除外。片方が失敗しても、もう片方に結果があれば返す |
+| `jp_master.py` `JpMaster.search(query, limit)` | | 部分一致(コードは前方一致) | `backend/data/jpx_listed.csv` が無ければ日本語検索は無効(警告を出す)。CSV は `scripts/update_jpx_master.py` で JPX 公式の Excel から作る |
+| `cache.py` `CachedProvider.get_ohlcv(...)` | | inner と同じ | §2.2 |
+| `validation.py` `validate_ohlcv(df)` | | `(df, warnings)` | QUANT_SPEC §1.2 |
+| `services/market.py` `load_history(...)` | | `(df, warnings)` | start > end は `InvalidRequestError`(400)。検証後に0行なら `NoDataError`(404) |
+
+### 2.2 キャッシュの方針(重要)
+- 同じ銘柄・時間軸について、「取得済みの期間」と「取得日時」を記録する
+- 要求された期間が取得済みの期間に含まれていて、取得から **12時間以内**ならキャッシュから返す
+- それ以外は、**取得済みの期間と要求された期間を合わせた範囲を丸ごと取り直し、古い行をすべて置き換える**
+  - 理由: `Adj Close` は新しい配当が出るたびに過去の値まで書き換わる。古い行と新しい行を混ぜると調整係数がつながらず、リターンの計算が壊れる
+- 銘柄検索と最新株価はキャッシュしない
+
+### 2.3 テスト用データ元(fixture)
+- `QUANTLAB_DATA_PROVIDER=fixture` のときだけ使う、**合成データ**のデータ元。E2E テストで Yahoo に依存しないために使う
+- 銘柄名に「合成データ」と明記し、画面にも「テスト用の合成データです」という警告を必ず出す(実データと誤認させない)
+
 ## 3. API(予定)
 | Method | Path | 内容 | Phase |
 |---|---|---|---|
