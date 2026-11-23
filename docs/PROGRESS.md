@@ -67,3 +67,30 @@
 2. JPX 一覧の CSV は WSL2 で作成が必要(`scripts/update_jpx_master.py`)
 3. キャッシュから読んだ場合は「欠損行を除外しました」の警告が出ない(欠損行は保存時に除外済みのため)。実害はないが、Phase 8 で見直す
 4. 最新株価は日足の最終行から作っているので、取引時間中の値の遅延時間は Yahoo 次第(画面には日付を表示)
+
+## Phase 4: 指標・投資戦略 (2026-11-23)
+
+### 設計変更(QUANT_SPEC v0.3)
+- 仕様の矛盾を解消: 「ウォームアップ中のクロスで、分析初日から保有状態になる」問題
+- 戦略は売買の「きっかけ」(entry / exit)だけを返し、ポジション管理は共通の状態機械 `generate_signals()` が `trade_start` から行う
+
+### 実装したもの
+- `quant/indicators.py`: sma, ema(SMA で初期化), rsi(Wilder), macd, bollinger(ddof=0), roc, zscore, cross_above / cross_below
+- `quant/adjust.py`: 分割・配当調整(total_return / split_only)
+- `quant/strategies/`: 8戦略 + レジストリ + 状態機械
+- API: `GET /api/strategies`, `POST /api/strategies/{id}/signals`(ウォームアップ込みで取得 → 調整 → シグナル)
+- 画面: 戦略カード(スマホは詳細を折りたたみ)、パラメータ入力(範囲チェック)、シグナルのチャート表示
+
+### テスト結果(クラウド作業環境)
+| 項目 | 結果 |
+|---|---|
+| pytest | 186 passed(network 5件は未実行) |
+| ruff / tsc / eslint / next build | OK |
+| Playwright(desktop / mobile) | 34 passed |
+
+主なテスト: 指標の手計算一致、RSI の別実装との一致、全指標・全戦略の Look-ahead テスト(前方切り捨て・未来の改ざん)、min_bars の妥当性、状態機械の境界条件
+
+### 未解決の課題
+1. Phase 3 の network テスト(分割調整の確認)が未実行 → Phase 5 の前に必要
+2. シグナル確認のチャートは「分割調整済み・配当未調整」の価格、シグナルの判定は「配当込みの調整後価格」。日付は一致するが、価格の水準は少しずれる(画面に注記済み)
+3. 1つのパラメータを打つたびに API を呼ぶ(入力の確定を待たない)。今は軽いので問題ないが、Phase 8 で入力の遅延(debounce)を検討

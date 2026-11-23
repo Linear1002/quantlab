@@ -1,4 +1,4 @@
-# QuantLab 金融計算仕様書 (v0.2 / Phase 1)
+# QuantLab 金融計算仕様書 (v0.3 / Phase 4)
 
 > この文書が「正」。`backend/quant/` の実装とテストはこの仕様に従う。
 > 仕様を変えるときは、先にこの文書を更新し、変更理由を「変更履歴」に書く。
@@ -92,15 +92,20 @@
 ファイル: `backend/quant/strategies/*.py`
 
 ### 4.1 インターフェース
+戦略は「売買の**きっかけ(イベント)**」だけを返し、ポジションの状態管理は共通関数が行う。
 ```python
 class Strategy(ABC):
     id: str
-    def param_schema(self) -> list[ParamSpec]          # UI のフォーム生成に使う
-    def validate_params(self, params) -> dict           # 型・範囲・相互関係のチェック
-    def min_bars(self, params) -> int                   # ウォームアップに必要な本数
-    def generate_signals(self, df, params) -> pd.Series # s_t ∈ {0,1}, dtype int8
+    def param_schema(self) -> list[ParamSpec]               # UI のフォーム生成に使う
+    def validate_params(self, params) -> dict                # 型・範囲・相互関係のチェック。既定値を補う
+    def min_bars(self, params) -> int                        # 指標が最初に有効になるまでの本数
+    def events(self, df, params) -> tuple[Series, Series]    # (entry, exit) の bool 列
+
+def generate_signals(strategy, df, params, trade_start=None) -> pd.Series  # s_t ∈ {0,1}, int8
 ```
-- 指標が NaN の期間は `s_t = 0`
+- `events`: entry[t] = 「t の終値時点で買いの条件を満たす」、exit[t] = 「売りの条件を満たす」。指標が NaN のバーは両方 False
+- `generate_signals`: 状態機械。`trade_start` より前は必ず 0。`trade_start` 以降、ノーポジで entry → 1、保有中で exit → 0
+  - 同じバーで entry と exit が両方 True のとき: ノーポジなら買わない、保有中なら売る(慎重な側に倒す)
 - **「s_t は C_t の確定後に決まる」**。約定はエンジンが t+1 の始値で行う(§5)
 
 ### 4.2 売買ルール(すべて long-only)
@@ -115,13 +120,15 @@ class Strategy(ABC):
 | Mean Reversion | z < -entry_z | z >= -exit_z | n=20, entry_z=2.0, exit_z=0.0(exit_z<entry_z) |
 | Buy and Hold | 最初の有効バー | 売らない | なし |
 
-「上抜け」の定義: `a_{t-1} <= b_{t-1}` かつ `a_t > b_t`。
+「上抜け」の定義: `a_{t-1} <= b_{t-1}` かつ `a_t > b_t`(t-1 と t の両方で a, b が有効なこと)。
 クロス系は**イベント型**(期間開始時点で既に短期>長期でも、クロスが起きるまで買わない)。
+Momentum は「条件を満たしている間は保有」なので、entry = 条件成立、exit = 条件不成立 とする(状態機械に通すと同じ結果になる)。
+Buy and Hold は entry = 常に True、exit = 常に False。
 
 ### 4.3 ウォームアップ
 分析開始日より前に `min_bars` 本以上のデータを取得して指標を計算する。
-**シグナルはウォームアップ期間にも計算するが、売買は分析開始日以降のみ。**
-(過去データを使うだけなので Look-ahead ではない)
+**指標はウォームアップ期間から計算するが、状態機械は分析開始日(`trade_start`)から動かす。**
+(過去データを使うだけなので Look-ahead ではない。ウォームアップ中に起きたクロスで、初日から保有状態になることもない)
 ウォームアップ分が取れない場合は、取れる範囲で計算し、`warnings` に記録する。
 
 ---
@@ -222,3 +229,4 @@ pandas の変換は外側の `run_backtest()` で行う。将来はこの `simul
 ## 変更履歴
 - v0.1 (2026-11-23): 初版
 - v0.2 (2026-11-23): 実データ確認の結果を反映。tz の扱い(§1.1)、配当未調整の確認と分割確認の方法(§2.1)
+- v0.3 (2026-11-23): §4.1 と §4.3 の矛盾を解消。「ウォームアップ中のクロスで初日から保有になる」問題を、戦略=イベント、状態管理=共通関数(trade_start から開始)に分けて解決

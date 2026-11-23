@@ -16,14 +16,29 @@ export class ApiError extends Error {
 
 type Params = Record<string, string | undefined>;
 
-async function request<T>(path: string, params?: Params, signal?: AbortSignal): Promise<T> {
+async function request<T>(
+  path: string,
+  params?: Params,
+  signal?: AbortSignal,
+  body?: unknown,
+): Promise<T> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined) qs.set(k, v);
   const url = `${API_BASE_URL}${path}${qs.size ? `?${qs}` : ""}`;
+  const init: RequestInit =
+    body === undefined
+      ? { cache: "no-store", signal }
+      : {
+          method: "POST",
+          cache: "no-store",
+          signal,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        };
 
   let res: Response;
   try {
-    res = await fetch(url, { cache: "no-store", signal });
+    res = await fetch(url, init);
   } catch (e) {
     if (signal?.aborted) throw e; // 呼び出し側が中断した(入力し直したなど)。エラー表示はしない
     throw new ApiError(0, "NETWORK_ERROR", `バックエンド(${API_BASE_URL})に接続できません`);
@@ -112,6 +127,69 @@ export const getHistory = (
     `/api/stocks/${encodeURIComponent(symbol)}/history`,
     { start, end, interval },
     signal,
+  );
+
+// ---- 戦略 ------------------------------------------------------------------
+
+export type ParamDef = {
+  name: string;
+  label: string;
+  type: "int" | "float";
+  default: number;
+  min: number;
+  max: number;
+  step: number;
+  description: string;
+};
+
+export type StrategyCategory = "trend" | "oscillator" | "mean_reversion" | "benchmark";
+
+export type StrategyDef = {
+  id: string;
+  name: string;
+  category: StrategyCategory;
+  summary: string;
+  idea: string;
+  buy_rule: string;
+  sell_rule: string;
+  suitable: string;
+  risks: string[];
+  difficulty: 1 | 2 | 3;
+  params: ParamDef[];
+};
+
+export type SignalEvent = { date: string; type: "buy" | "sell"; close: number };
+
+export type SignalsResult = {
+  strategy_id: string;
+  params: Record<string, number>;
+  events: SignalEvent[];
+  holding_at_end: boolean;
+  bars: number;
+  warmup_bars: number;
+  provider: string;
+  warnings: string[];
+};
+
+export const getStrategies = (signal?: AbortSignal) =>
+  request<StrategyDef[]>("/api/strategies", undefined, signal);
+
+export const postSignals = (
+  strategyId: string,
+  body: {
+    symbol: string;
+    start: string;
+    end: string;
+    interval: Interval;
+    params: Record<string, number>;
+  },
+  signal?: AbortSignal,
+) =>
+  request<SignalsResult>(
+    `/api/strategies/${encodeURIComponent(strategyId)}/signals`,
+    undefined,
+    signal,
+    body,
   );
 
 /** 合成データ(テスト用)のデータ元か。画面に警告を出すために使う */
