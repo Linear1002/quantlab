@@ -1,5 +1,7 @@
 """FastAPI のエントリポイント。起動: `uv run uvicorn app.main:app --reload`"""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,12 +16,22 @@ from app.data.base import (
     RateLimitError,
     SymbolNotFoundError,
 )
+from app.db.session import get_engine
 from quant.errors import InsufficientDataError, InvalidParameterError
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """起動時に DB を最新にしておく。リクエストが来てから準備すると、同時に来たときに衝突するため。
+    (テストでは get_engine を一時 DB に差し替えているので、ここでも差し替え後のものを使う)"""
+    get_db = app.dependency_overrides.get(get_engine, get_engine)
+    get_db()
+    yield
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="QuantLab API", version="0.1.0")
+    app = FastAPI(title="QuantLab API", version="0.1.0", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,

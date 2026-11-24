@@ -47,3 +47,54 @@ def test_make_engine_twice_is_safe(tmp_path):
     url = f"sqlite:///{tmp_path}/b.db"
     make_engine(url).dispose()
     make_engine(url).dispose()  # 2回目は何もしない(エラーにならない)
+
+
+def _legacy_db(url):
+    legacy = create_engine(url)
+    metadata.tables["ohlcv_bars"].create(legacy)
+    metadata.tables["ohlcv_coverage"].create(legacy)
+    return legacy
+
+
+def test_broken_state_with_empty_version_table_is_repaired(tmp_path):
+    """実際に起きた状態: キャッシュの表はあるのに、alembic_version が空。
+
+    以前は 0001 を再実行して「table ohlcv_bars already exists」で毎回失敗していた。
+    """
+    from sqlalchemy import text
+
+    url = f"sqlite:///{tmp_path}/broken.db"
+    legacy = _legacy_db(url)
+    with legacy.begin() as conn:
+        conn.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
+    legacy.dispose()
+
+    engine = make_engine(url)
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT version_num FROM alembic_version")).scalars().all() == [
+            "0002"
+        ]
+    assert "backtest_runs" in inspect(engine).get_table_names()
+
+
+def test_concurrent_first_requests_do_not_break_the_database(tmp_path):
+    """起動直後にリクエストが同時に来ても、マイグレーションが衝突しないこと(実際に起きた不具合)。"""
+    import threading
+
+    url = f"sqlite:///{tmp_path}/race.db"
+    _legacy_db(url).dispose()
+    errors: list[str] = []
+
+    def first_request():
+        try:
+            make_engine(url).dispose()
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{type(e).__name__}: {e}")
+
+    threads = [threading.Thread(target=first_request) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    make_engine(url).dispose()  # その後も正常
