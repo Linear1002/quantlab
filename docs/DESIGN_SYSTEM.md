@@ -17,7 +17,7 @@
 | navy | #0a1020 | パネル |
 | panel | #0f172b | 一段上の面(入力欄など) |
 | line / line-strong | #1c2740 / #2a3858 | 罫線 / 入力欄の枠 |
-| text / muted / faint | #e7ebf3 / #8b95ad / #5d6782 | 本文 / 補足 / ラベル |
+| text / muted / faint | #e7ebf3 / #8b95ad / #76819d | 本文 / 補足 / ラベル(すべて背景に対して 4.5:1 以上) |
 | blue | #4f7cff | 主要な操作(ボタン、フォーカス、現在のステップ) |
 | cyan | #38cfe0 | 選択済み・完了・データの強調 |
 | purple | #9a7bff | 戦略に関する要素 |

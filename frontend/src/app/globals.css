@@ -19,7 +19,7 @@
   --line-strong: #2a3858;
   --text: #e7ebf3;
   --text-muted: #8b95ad;
-  --text-faint: #5d6782;
+  --text-faint: #76819d; /* WCAG AA(4.5:1)を満たす明るさ */
 
   /* アクセント */
   --blue: #4f7cff;

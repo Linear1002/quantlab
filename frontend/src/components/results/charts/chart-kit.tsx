@@ -12,7 +12,7 @@ export const C = {
   gain: "#34d39a",
   loss: "#ff6b6b",
   grid: "#1c2740",
-  axis: "#5d6782",
+  axis: "#76819d",
   text: "#e7ebf3",
   muted: "#8b95ad",
   zero: "#2a3858",

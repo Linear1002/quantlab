@@ -44,6 +44,19 @@ test("結果ページにすべてのグラフと取引履歴が表示される",
   await expect(page.getByTestId("trades-table").locator("tbody tr")).toHaveCount(n);
 });
 
+test("結果の読み方: 見出し・各項目・注意点が日本語で出る", async ({ page }) => {
+  await runBacktest(page);
+  const panel = page.getByTestId("interpretation");
+  await expect(panel.getByRole("heading", { name: "結果の読み方" })).toBeVisible();
+  // 各項目の見出しの前には、読み上げ用の「良い点: 」などが付いているので、末尾一致で探す
+  for (const title of ["リターン", "いちばん大きな下落", "リスクあたりの効率", "株を持っていた時間", "取引の中身"]) {
+    await expect(panel.getByText(new RegExp(`${title}$`))).toBeVisible();
+  }
+  await expect(panel).toContainText("Buy and Hold");
+  await expect(panel).toContainText("過剰最適化");
+  await expect(panel).toContainText("合成データ"); // テスト用データでは必ず注意が出る
+});
+
 test("月別リターンを Buy and Hold に切り替えられる", async ({ page }) => {
   await runBacktest(page);
   const table = page.getByTestId("monthly-table");
@@ -57,6 +70,7 @@ test("資産推移のグラフにマウスを乗せると、その日の値が�
   test.skip(isMobile, "ホバーは PC のみ");
   await runBacktest(page);
   const chart = page.getByRole("img", { name: "SMA Crossover と Buy and Hold の資産推移" });
+  await chart.scrollIntoViewIfNeeded(); // 「結果の読み方」の下にあるので、画面内に入れてからマウスを乗せる
   const box = (await chart.boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.5);
   await expect(page.getByText("保有", { exact: true })).toBeVisible();

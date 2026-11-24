@@ -13,6 +13,13 @@ frontend/  Next.js + TypeScript + Tailwind          … npm で管理
 docs/      設計書・仕様書
 ```
 
+## 起動(いちばん簡単な方法)
+```bash
+cd ~/dev/quantlab && ./dev.sh            # backend(8000)と frontend(3000)を両方起動。Ctrl + C で両方止まる
+./dev.sh --install                       # git pull の後: パッケージを入れ直してから起動
+```
+ブラウザで http://localhost:3000 を開く。
+
 ## セットアップ(WSL2 Ubuntu)
 
 > プロジェクトは **WSL 側のホーム(例: `~/dev/quantlab`)に置く**こと。
@@ -65,6 +72,7 @@ WSL の中で `code .` を実行して開く(左下に「WSL: Ubuntu」と表示
 | backend テスト | `cd backend && uv run pytest` |
 | backend lint | `uv run ruff check . && uv run ruff format --check .` |
 | frontend 型チェック | `cd frontend && npm run typecheck` |
+| frontend 単体テスト | `npm test`(vitest。結果の読み方・ヒストグラム・表示形式・入力チェック) |
 | frontend lint | `npm run lint` |
 | API の型を自動生成 | `npm run gen:api`(backend 起動中に実行) |
 

@@ -8,6 +8,7 @@ import { type BacktestResult, type Bar, isSyntheticProvider } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { DrawdownChart } from "./charts/drawdown-chart";
 import { EquityChart } from "./charts/equity-chart";
+import { InterpretationPanel } from "./interpretation-panel";
 import { MonthlyHeatmap } from "./charts/monthly-heatmap";
 import { ReturnHistogram } from "./charts/return-histogram";
 import { YearlyBars } from "./charts/yearly-bars";
@@ -91,6 +92,8 @@ export function ResultView({ result: r }: { result: BacktestResult }) {
           )}
         </ul>
       )}
+
+      <InterpretationPanel result={r} />
 
       <Panel title="資産推移">
         <EquityChart series={r.series} strategyName={strategyName} currency={currency} initial={initial} />

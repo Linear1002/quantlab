@@ -67,6 +67,7 @@ export function MetricsTable({ strategy, benchmark, strategyName }: { strategy: 
               <tr key={row.key} className="border-b border-line/60" data-testid={`metric-${row.key}`}>
                 <th scope="row" className="py-2.5 pr-3 text-left font-normal text-muted-foreground sm:pr-4">
                   {row.label}
+                  <span className="mt-0.5 block text-[11px] leading-snug text-faint md:hidden">{row.help}</span>
                 </th>
                 <td className={cn("py-2.5 pr-3 text-right sm:pr-4", aWins ? "font-semibold text-foreground" : "text-muted-foreground")}>
                   {row.value(strategy)}
